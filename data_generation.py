@@ -28,4 +28,4 @@ def generate_toy_data(plot=False):
     print(X.shape, y.shape)
 
 if __name__ == '__main__':
-    generate_toy_data()
+    generate_toy_data(plot=True)
