@@ -15,7 +15,9 @@ class FCN(nn.Module):
         super(FCN, self).__init__()
 
         self.fc = nn.Sequential(
-            nn.Linear(input_size, output_size),
+            nn.Linear(input_size, 2),
+            #nn.ReLU(),
+            nn.Linear(2, output_size),
             nn.Sigmoid()
         )
 
@@ -29,19 +31,39 @@ X = torch.from_numpy(X).float().to(device)
 y = torch.from_numpy(y).float().to(device)
 
 model = FCN(2, 1)
-#K = torch.Tensor([[1.3333333333333333, -0.888888888888889]])
-K = torch.Tensor([[2.0, -1.3333333333333335]])
+
+# Check MP
+"""
+K = torch.Tensor([[0.0, 0.0], [1.1314813736338398, -1.13148137363384]])
 model.fc[0].weight = torch.nn.Parameter(K)
-#K = torch.Tensor([[-1.111111111111111]])
-K = torch.Tensor([[-1.6666666666666667]])
+K = torch.Tensor([[0.0, 2.26296274726768]])
 model.fc[0].bias = torch.nn.Parameter(K)
-print(model.state_dict())
+
+K = torch.Tensor([[0.2385, 1.7171]])
+model.fc[1].weight = torch.nn.Parameter(K)
+K = torch.Tensor([[-2.8286]])
+model.fc[1].bias = torch.nn.Parameter(K)
+"""
+
+# Check SP
+K = torch.Tensor([[-0.1458,  0.0463], [1.8124, -1.0703]])
+model.fc[0].weight = torch.nn.Parameter(K)
+K = torch.Tensor([[-0.4035,  0.6006]])
+model.fc[0].bias = torch.nn.Parameter(K)
+
+K = torch.Tensor([[0.0, 1.20785103170613]])
+model.fc[1].weight = torch.nn.Parameter(K)
+K = torch.Tensor([[-3.0000000000002]])
+model.fc[1].bias = torch.nn.Parameter(K)
+
+#print(model.state_dict())
 
 model = model.to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=0.05)
 criterion = nn.BCELoss()
 
+"""
 for e in range(100):
     model.train()
     optimizer.zero_grad()
@@ -59,6 +81,7 @@ for e in range(100):
     threshold = torch.tensor([0.5]).to(device)
     results = (output>threshold).float()*1
     #print(output.cpu().detach().numpy().reshape(-1, 1), results.cpu().detach().numpy().reshape(-1, 1))
+"""
 
 model.eval()
 output = model(X)
