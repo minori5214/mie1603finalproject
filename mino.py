@@ -27,7 +27,8 @@ class MINO():
         self.model.setObjective(quicksum(self.z), GRB.MINIMIZE)
         self.model.update()
     
-    def fit(self):
+    def fit(self, time_limit=300):
+        self.model.setParam('TimeLimit', time_limit)
         self.model.optimize()
 
 class MINO_sigmoid(MINO):
@@ -269,12 +270,15 @@ class MINO_2layers_sigmoid_v2(MINO):
         self.model.update()
 
 if __name__ == '__main__':
-    X = np.load('toy_X.npy')
-    y = np.load('toy_y.npy')
+    #X = np.load('toy_X.npy')
+    #y = np.load('toy_y.npy')
+
+    X = np.load('titanic_X_train.npy')
+    y = np.load('titanic_y_train.npy').reshape(-1)
     N = X.shape[0]
 
     #mino = MINO_sigmoid_v2()
-    mino = MINO_2layers_sigmoid_v2()
+    mino = MINO_sigmoid_v2(input_dim=X.shape[1])
     mino.build(X, y)
     mino.fit()
 
