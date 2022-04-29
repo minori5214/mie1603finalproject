@@ -20,7 +20,7 @@ df = df.drop(
 )
 df = pd.get_dummies(df)
 
-print(df)
+print(df.head())
 
 from sklearn.model_selection import train_test_split
 y = df.Survived
@@ -43,6 +43,7 @@ np.save('titanic_y_train.npy', y_train)
 np.save('titanic_X_test.npy', X_test)
 np.save('titanic_y_test.npy', y_test)
 
+"""
 from nn_2layers import NeuralNet
 
 neuralnet = NeuralNet(X_train.shape[1], 2, 1, lr=0.01, X_test=None, y_test=None)
@@ -72,3 +73,4 @@ print(neuralnet.model.state_dict())
 # ('fc.0.bias', tensor([-0.2301,  1.1177], device='cuda:0')), 
 # ('fc.2.weight', tensor([[ 0.0525, -1.3537]], device='cuda:0')), 
 # ('fc.2.bias', tensor([1.6255], device='cuda:0'))])
+"""

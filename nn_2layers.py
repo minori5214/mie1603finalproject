@@ -57,6 +57,9 @@ class NeuralNet():
             results = (output>threshold).float()*1
             correct_num = (results == y).float().sum()
             train_acc = torch.round(correct_num / len(y) * 100)
+
+            #print(sum(abs(output-y)).item())
+
             if e % 10 == 0:
                 print("Train: epoch: {}, loss: {:.3f}, acc: {:.3f}".format(e, loss.item(), train_acc))
 
@@ -112,20 +115,24 @@ if __name__ == "__main__":
     X = np.load('titanic_X_train.npy')
     y = np.load('titanic_y_train.npy').reshape(-1, 1)
 
+
     neuralnet = NeuralNet(5, 5, 1, lr=0.05, X_test=None, y_test=None)
-    K = torch.Tensor([[0.0, 0.0, 0.0, 0.0, 0.0], [5.853552954208808e-10, -1.2354092344902669e-09, -3.017959160808027e-10, -1.5164403066592058e-10, -1.7486119905001385e-12]])
+
+    K = torch.Tensor([[-0.15847652215843794, -0.2944597414859822, -0.25758485930737707, -0.0979889356435591, 0.0884475974667059], [0.0, 0.0, 0.0, 0.0, 0.0], [33.14237395067417, 929.8040931337734, 0.21065792620609847, 0.42417200395564447, 0.137013285337292], [-3.497274991348318, -6.889367996182848, -5.684407219040059, -2.162429168608851, 1.9518700085804206], [0.0, 0.0, 0.0, 0.0, 0.0]])
     neuralnet.model.fc[0].weight = torch.nn.Parameter(K)
-    K = torch.Tensor([[0.0, -99.99999999768139]])
+    K = torch.Tensor([0.5511728486553018, -1000.0, -1033.1423739506743, 3.497274991348318, -1000.0])
     neuralnet.model.fc[0].bias = torch.nn.Parameter(K)
 
-    K = torch.Tensor([[1.855836391486696, -399709892149.4715]])
+    K = torch.Tensor([[225.64378272441002, 0.0, -122.91880720979601, -10.224887096753179, 0.0]])
     neuralnet.model.fc[2].weight = torch.nn.Parameter(K)
-    K = torch.Tensor([[-20.695247345136565]])
+    K = torch.Tensor([[-90.60948457273254]])
     neuralnet.model.fc[2].bias = torch.nn.Parameter(K)
 
 
-    neuralnet.fit(X, y)
+    #neuralnet.fit(X, y)
 
+    X = np.load('titanic_X_test.npy')
+    y = np.load('titanic_y_test.npy').reshape(-1, 1)
     print(neuralnet.score(X, y))
 
     X = torch.from_numpy(X).float().to(device)

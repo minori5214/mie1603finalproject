@@ -6,12 +6,17 @@ class MINO_DECO_2layer():
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.hidden_dim = hidden_dim
-    
-        self.slope_sm = [1/8, 1/4, 1/8]
-        self.intercept_sm = [3/8, 1/2, 5/8]
-        
+            
         self.M = 1000 # maximum raw output before sigmoid
         self.sigmoid = sigmoid
+        if sigmoid == 'V1':
+            self.slope_sm = 1/4
+            self.intercept_sm = 1/2
+        elif sigmoid == 'V2':
+            self.slope_sm = [1/8, 1/4, 1/8]
+            self.intercept_sm = [3/8, 1/2, 5/8]
+        else:
+            raise NotImplementedError
 
     def build_MP(self, X, y, w_2, b_2):
         """
@@ -66,8 +71,8 @@ class MINO_DECO_2layer():
             self.q = {}
             for k in range(N):
                 for i in range(3):
-                    self.p[k, i] = self.model.addVar(vtype=GRB.BINARY, name="p({%s},{%s})" % (k, i))
-                    self.q[k, i] = self.model.addVar(vtype=GRB.CONTINUOUS, lb=-float('inf'), ub=float('inf'), name="q({%s},{%s})" % (k, i))
+                    self.p[k, i] = self.model_MP.addVar(vtype=GRB.BINARY, name="p({%s},{%s})" % (k, i))
+                    self.q[k, i] = self.model_MP.addVar(vtype=GRB.CONTINUOUS, lb=-float('inf'), ub=float('inf'), name="q({%s},{%s})" % (k, i))
                 
                 self.model_MP.addConstr(quicksum(self.p[k, i] for i in range(3)) == 1)
                 self.model_MP.addConstr(quicksum(self.q[k, i] for i in range(3)) == self.y_pred[k])
@@ -81,7 +86,7 @@ class MINO_DECO_2layer():
                 self.model_MP.addConstr(2*self.p[k, 2] <= self.q[k, 2])
                 self.model_MP.addConstr(self.q[k, 2] <= self.M*self.p[k, 2])
 
-                self.model_MP.addConstr(self.r[k] == self.slope*self.q[k, 1] + self.intercept*self.p[k, 1] + self.p[k, 2])
+                self.model_MP.addConstr(self.r[k] == self.slope_sm*self.q[k, 1] + self.intercept_sm*self.p[k, 1] + self.p[k, 2])
         elif self.sigmoid == 'V2':
             self.p = {}
             self.q = {}
@@ -179,7 +184,7 @@ class MINO_DECO_2layer():
                 self.model_SP.addConstr(2*self.p[k, 2] <= self.q[k, 2])
                 self.model_SP.addConstr(self.q[k, 2] <= self.M*self.p[k, 2])
 
-                self.model_SP.addConstr(self.r[k] == self.slope*self.q[k, 1] + self.intercept*self.p[k, 1] + self.p[k, 2])
+                self.model_SP.addConstr(self.r[k] == self.slope_sm*self.q[k, 1] + self.intercept_sm*self.p[k, 1] + self.p[k, 2])
         elif self.sigmoid == 'V2':
             self.p = {}
             self.q = {}
@@ -237,7 +242,7 @@ class MINO_DECO_2layer():
                     w_1_opt[i, j] = self.w_1[i, j].X
             b_1_opt = [self.b_1[i].X for i in range(self.hidden_dim)]
 
-            return w_1_opt, b_1_opt
+            return w_1_opt, b_1_opt, self.model_MP.status
 
         elif problem == 'SP':
             if time_limit != None:
@@ -247,48 +252,49 @@ class MINO_DECO_2layer():
             w_2_opt = [self.w_2[i].X for i in range(self.hidden_dim)]
             b_2_opt = self.b_2.X
 
-            return w_2_opt, b_2_opt
+            return w_2_opt, b_2_opt, self.model_SP.status
     
-    def fit(self, X, y, num_iter=10, time_limit=300):
+    def fit(self, X, y, num_iter=10, time_limit=300, w_1=None, b_1=None):
         prev_loss = np.inf
-        #w_1, b_1 = self.weight_initialize(self.input_dim, self.hidden_dim, method='Xavier')
-        w_1 = np.array([[-0.6342, -0.6831, -0.5635, -0.1115, -0.3090],
-        [ 0.7114, -3.0982,  0.3847, -0.0256,  0.1434],
-        [-0.0673, -0.2047,  0.1489, -0.0539, -0.2021],
-        [ 0.3233, -1.1153,  0.1048,  0.3855,  0.0764],
-        [-0.3925,  2.9765, -0.3265, -0.0108,  0.1546]])
-        b_1 = np.array([-0.2850,  0.3952, -0.3664, -0.0111,  0.1324])
+        if w_1 is None or b_1 is None:
+            w_1, b_1 = self.weight_initialize(self.input_dim, self.hidden_dim, method='Xavier')
+        #w_1 = np.array([[-0.6342, -0.6831, -0.5635, -0.1115, -0.3090],
+        #[ 0.7114, -3.0982,  0.3847, -0.0256,  0.1434],
+        #[-0.0673, -0.2047,  0.1489, -0.0539, -0.2021],
+        #[ 0.3233, -1.1153,  0.1048,  0.3855,  0.0764],
+        #[-0.3925,  2.9765, -0.3265, -0.0108,  0.1546]])
+        #b_1 = np.array([-0.2850,  0.3952, -0.3664, -0.0111,  0.1324])
 
         for e in range(num_iter):
             self.build_SP(X, y, w_1, b_1)
-            _w_2, _b_2 = self.optimize(problem='SP', time_limit=time_limit)
+            _w_2, _b_2, status = self.optimize(problem='SP', time_limit=time_limit)
             loss = sum([self.z[i].X for i in range(N)])
             print("w_2: ", _w_2)
             print("b_2: ", _b_2)
             print("Epoch {}: loss: {}".format(e, loss))
 
             if loss < prev_loss:
-                status = 'accept'
+                accept = 'accept'
                 w_2, b_2 = _w_2, _b_2
                 prev_loss = loss
             else:
-                status = 'reject'
-            self.save_log(e, loss, 'SP', w_1, b_1, _w_2, _b_2, status=status)
+                accept = 'reject'
+            self.save_log(e, loss, 'SP', w_1, b_1, _w_2, _b_2, status, accept=accept)
 
             self.build_MP(X, y, w_2, b_2)
-            _w_1, _b_1 = self.optimize(problem='MP', time_limit=time_limit)
+            _w_1, _b_1, status = self.optimize(problem='MP', time_limit=time_limit)
             loss = sum([self.z[i].X for i in range(N)])
             print("w_1: ", _w_1)
             print("b_1: ", _b_1)
             print("Epoch {}: loss: {}".format(e, loss))
 
             if loss < prev_loss:
-                status = 'accept'
+                accept = 'accept'
                 w_1, b_1 = _w_1, _b_1
                 prev_loss = loss
             else:
-                status = 'reject'
-            self.save_log(e, loss, 'MP', _w_1, _b_1, w_2, b_2, status=status)
+                accept = 'reject'
+            self.save_log(e, loss, 'MP', _w_1, _b_1, w_2, b_2, status, accept=accept)
 
             if loss < 0.00001:
                 print("Early stop")
@@ -315,13 +321,13 @@ class MINO_DECO_2layer():
         
         return w_dict, b
 
-    def save_log(self, epoch, loss, problem, w_1, b_1, w_2, b_2, status='accepted', filename='log.txt'):
+    def save_log(self, epoch, loss, problem, w_1, b_1, w_2, b_2, status, accept='accepted', filename='log.txt'):
         _w_1 = []
         for i in range(self.hidden_dim):
             _w_1.append([w_1[i, j] for j in range(self.input_dim)])
 
         with open(filename, 'a', encoding='UTF-8') as f:
-            f.write("Epoch: {}, loss: {}, status: {}, {}\n".format(epoch, loss, status, problem))
+            f.write("Epoch: {}, loss: {}, accept: {}, status: {}, {}\n".format(epoch, loss, accept, status, problem))
             f.write("w_1\n")
             f.write(str(_w_1))
             f.write("\nb_1\n")
@@ -337,7 +343,7 @@ if __name__ == "__main__":
     y = np.load('titanic_y_train.npy').reshape(-1)
     print(y.shape)
     N = X.shape[0]
-    mino = MINO_DECO_2layer(input_dim=5, output_dim=1, hidden_dim=5)
+    mino = MINO_DECO_2layer(input_dim=5, output_dim=1, hidden_dim=5, sigmoid='V1')
     mino.fit(X, y, num_iter=10, time_limit=600)
 
     #X = np.load('toy_X.npy')
